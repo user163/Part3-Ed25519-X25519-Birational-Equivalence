@@ -1,5 +1,5 @@
 #
-# from Ed25519-from-the-scratch (use of affine add- and double-formulas in the Montgomery Ladder)
+# from Ed25519-from-the-scratch (for simplicity: use of affine add- and double-formulas in the Montgomery Ladder)
 #
 
 # edwards25519 parameters
@@ -93,7 +93,7 @@ def recover_x(y, x_sign):
     return x_final
 
 #
-# from X25519-from-the-scratch (use of affine add- and double-formulas in the Montgomery Ladder)
+# from X25519-from-the-scratch (for simplicity: use of affine add- and double-formulas in the Montgomery Ladder)
 #
 
 # curve25519 parameters
