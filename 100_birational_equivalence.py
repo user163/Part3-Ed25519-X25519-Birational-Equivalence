@@ -1,4 +1,6 @@
-# edwards25519 part --------------------------------------------------------------------------------
+#
+# from Ed25519-from-the-scratch (use of affine add- and double-formulas in the Montgomery Ladder)
+#
 
 # edwards25519 parameters
 edwards25519_a = -1
@@ -50,7 +52,49 @@ def edwards25519_point_multiplication(s, p):
             p = double_affine(p)
     return q
 
-# curve25519 part ---------------------------------------------------------------------------------
+def clamp(le_data_b): # le_data_b in little endian order
+    a_b = bytearray(le_data_b)
+    a_b[0] &= 248  # 0.  byte: set the three least significant bits to 0
+    a_b[31] &= 127 # 31. byte: set the most significant bit to 0
+    a_b[31] |= 64  #           ...and the second-most significant bit to 1
+    return bytes(a_b) 
+
+def le_encode_to_bytes(number):
+    return int.to_bytes(number, 32, "little")
+  
+def le_decode_to_number(number_b):
+    return int.from_bytes(number_b, "little")
+
+def decompress_point(y_b):
+    y_b = bytearray(y_b) # convert to bytearray because of bit manipulations
+    x_sign = (y_b[31] & 0x80 == 0x80)  # extract x sign bit
+    y_b[31] = y_b[31] & ~0x80          # clear x sign bit
+    y = le_decode_to_number(y_b)
+    x = recover_x(y, x_sign)
+    if x is None:
+        return None
+    else:
+        return (x, y)
+
+def recover_x(y, x_sign):
+    x2 = ((y * y - 1) * pow(edwards25519_d * y * y + 1, -1, edwards25519_p)) % edwards25519_p
+    x = pow(x2, (edwards25519_p + 3) // 8, edwards25519_p)
+    x_final = None
+    if ((x * x - x2) % edwards25519_p == 0):
+        x_final = x
+    elif ((x * x + x2) % edwards25519_p == 0):
+        x_final = (x * pow(2, (edwards25519_p - 1) // 4, edwards25519_p)) % edwards25519_p
+    else:
+        return None
+    if (x_final == 0) and (x_sign == 1):
+        return None
+    if (x_final & 1) != x_sign:
+        x_final = edwards25519_p - x_final
+    return x_final
+
+#
+# from X25519-from-the-scratch (use of affine add- and double-formulas in the Montgomery Ladder)
+#
 
 # curve25519 parameters
 curve25519_A = 486662 
@@ -103,8 +147,11 @@ def curve25519_point_multiplication(s, p):
             q = curve25519_add_affine(q, p) 
             p = curve25519_double_affine(p)
     return q
-  
-# point transformation part (edwards25519 <-> curve25519) ---------------------------------------------
+
+#
+# new ###############################################################################################
+# birational equivalence
+#
 
 def sqrt_minus_486664():
     a = -486664
@@ -135,50 +182,10 @@ def curve25519_to_edwards25519(curve25519_q):
     y = (numerator_y * denominator_y_inv) % edwards25519_p
     return (x, y)
 
-# key transformation part (Ed25510 <-> curve25519) ----------------------------------------------------
-
-def clamp(le_data_b): # le_data_b in little endian order
-    a_b = bytearray(le_data_b)
-    a_b[0] &= 248  # 0.  byte: set the three least significant bits to 0
-    a_b[31] &= 127 # 31. byte: set the most significant bit to 0
-    a_b[31] |= 64  #           ...and the second-most significant bit to 1
-    return bytes(a_b) 
-
-def le_encode_to_bytes(number):
-    return int.to_bytes(number, 32, "little")
-  
-def le_decode_to_number(number_b):
-    return int.from_bytes(number_b, "little")
-
-def decompress_point(y_b):
-    y_b = bytearray(y_b) # convert to bytearray because of bit manipulations
-    x_sign = (y_b[31] & 0x80 == 0x80)  # extract x sign bit
-    y_b[31] = y_b[31] & ~0x80          # clear x sign bit
-    y = le_decode_to_number(y_b)
-    x = recover_x(y, x_sign)
-    if x is None:
-        return None
-    else:
-        return (x, y)
-
-def recover_x(y, x_sign):
-    x2 = ((y * y - 1) * pow(edwards25519_d * y * y + 1, -1, edwards25519_p)) % edwards25519_p
-    x = pow(x2, (edwards25519_p + 3) // 8, edwards25519_p)
-    x_final = None
-    if ((x * x - x2) % edwards25519_p == 0):
-        x_final = x
-    elif ((x * x + x2) % edwards25519_p == 0):
-        x_final = (x * pow(2, (edwards25519_p - 1) // 4, edwards25519_p)) % edwards25519_p
-    else:
-        return None
-    if (x_final == 0) and (x_sign == 1):
-        return None
-    if (x_final & 1) != x_sign:
-        x_final = edwards25519_p - x_final
-    return x_final
-
+#
 # Main test 1: point transformation ---------------------------------------------------------------------
 # Transforms two points N, M with N=n*M on the edwars25519 curve to the curve25519 curve as N', M' with N'=n*M'
+#
 
 # edwards25519, step 1: M = m * G
 from secrets import randbelow
@@ -216,8 +223,10 @@ curve25519_N_directly = curve25519_point_multiplication(edwards25519_n, curve255
 print("edwards25519_N: " + str(curve25519_N))
 print("edwards25519_N: " + str(curve25519_N_directly))
 
+#
 # Main test 2: key transformation ---------------------------------------------------------------------
 # Transforms an Ed25519 keypair to an X25519 keypair
+#
 
 '''
 Ed25519 key pair from Ed25519-from-the-scratch/500_key_generation.py
