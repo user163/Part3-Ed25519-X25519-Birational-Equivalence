@@ -14,5 +14,10 @@ Consistency test: the same point on the curve25519 curve is obtained when the se
 
 This is demonstrated in the second test (*Main test 2*) in *100_birational_equivaleny.py*.
 
+--------------
+
+Note 1:  
+Clamping the Ed25519 secret key is mainly necessary for X25519 (e.g. to prevent a small order subgroup attack). When generating an Ed25519 key pair, the public key is created with `s_clamped`, where `s_clamped` also corresponds to the X25519 secret key. Thus, clamping during the generation of the Ed25519 key pair ensures that the derived secret X25519 key is also clamped.
+
 [1]: https://datatracker.ietf.org/doc/html/rfc7748#section-4.1
 
